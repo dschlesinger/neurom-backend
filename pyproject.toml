@@ -1,0 +1,28 @@
+[project]
+name = "bostonhacks-muse-backend"
+version = "0.0.0"
+authors = [
+  { name="Denali Schlesinger", email="dsch28@bu.edu" },
+]
+description = "Backend for artifact detection and key stroke emission"
+readme = "README.md"
+requires-python = ">=3.12"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: Independent",
+    "Topic :: Scientific/Engineering :: EEG Artifact Analysis"
+]
+license = "MIT"
+license-files = ["LICEN[CS]E*"]
+dynamic = ["dependencies"]
+
+[tool.setuptools.dynamic]
+dependencies = {file = ["requirements.txt"]}
+
+[project.scripts]
+
+neurom-run="cli.run:main"
+neurom-dummy-backend="cli.dummy:main"
+
+[project.urls]
+Homepage = "https://github.com/dschlesinger/neurom-backend"
