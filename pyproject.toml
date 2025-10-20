@@ -22,7 +22,6 @@ dependencies = {file = ["requirements.txt"]}
 [project.scripts]
 
 neurom-run="cli.run:main"
-neurom-dummy-backend="cli.dummy:main"
 
 [project.urls]
 Homepage = "https://github.com/dschlesinger/neurom-backend"
