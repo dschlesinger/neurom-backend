@@ -1,5 +1,4 @@
 import threading, numpy as np, matplotlib.pyplot as plt, asyncio
-from typing import Union, List
 
 from muselsl import stream, list_muses, view
 from pylsl import StreamInlet, resolve_byprop
@@ -8,8 +7,11 @@ from time import sleep
 import eeg.status
 from cli.config import Settings
 from eeg.detect import detect_anamolies
-from .schema import DataPoint
+from .schema import DataPoint, Anomaly
 from .utils import get_channel_names
+from keybinding.handler import emit_keybind
+
+from typing import Union, List
 
 buffer = None
 timestamp_buffer = None
@@ -22,6 +24,9 @@ lock = threading.Lock()
 
 class MuseNotConnected(Exception):
     pass
+
+# For now
+keybindings_on: bool = True
 
 def connect_to_eeg() -> Union['inlet', None]:
     """Returns inlet else none"""
@@ -63,7 +68,7 @@ def connect_to_eeg() -> Union['inlet', None]:
 
         streams = resolve_byprop('type', 'EEG', timeout=5)
         try:
-            inlet = StreamInlet(streams[0])  # IndexError if streams is empty
+            inlet = StreamInlet(streams[0], max_chunklen=12)  # IndexError if streams is empty
         except IndexError:
             with lock: eeg.status.status_manager.set_status(stream_started=False)
             raise Exception('Could not find stream')
@@ -80,6 +85,8 @@ def eeg_loop(num_samples_to_buffer: int = Settings.BUFFER_LENGTH, current_mode: 
     global buffer, timestamp_buffer, events, sensors
 
     total_number_off_sample: int = 0
+
+    last_event: Anomaly | None = None
 
     # Connect to eeg
     print('Connecting to EEG')
@@ -145,9 +152,24 @@ def eeg_loop(num_samples_to_buffer: int = Settings.BUFFER_LENGTH, current_mode: 
 
                     detect_anamolies(buffer, timestamp_buffer, events, sensors)
 
-                if current_mode:
+                if keybindings_on:
 
-                    pass
+                    with lock:
+
+                        if not events:
+                            continue
+
+                        elif last_event is None and events[-1].final:
+
+                            last_event = events[-1]
+
+                            emit_keybind(events)
+
+                        elif last_event is not None and last_event.start != events[-1].start and events[-1].final:
+
+                            emit_keybind(events)
+
+                            last_event = events[-1]
                     
                     # # To avoid circular import, should redo this at somepoint very wack
                     # from detector.model import check_for_emission, model, Model
@@ -157,6 +179,9 @@ def eeg_loop(num_samples_to_buffer: int = Settings.BUFFER_LENGTH, current_mode: 
                     # model.load_data('data_store/examples.json')
                     
                     # check_for_emission(model)
+
+            # Sleep? No makes lag
+            # sleep(0.01)
 
         except KeyboardInterrupt:
             pass
@@ -198,9 +223,7 @@ async def wait_for_new_event(classification: str) -> DataPoint:
         else:
 
             prev_event_st = 0
-
-    break_while_loop: bool = False
-
+            
     while True:
 
         with lock:

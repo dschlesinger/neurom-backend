@@ -22,8 +22,6 @@ def end_event(event: Anomaly, buffer: np.ndarray, timestamps: np.ndarray) -> Non
     # Update previous to be final
     event.final = True
 
-    print('ending event')
-
 def detect_anamolies(buffer: np.ndarray, timestamps: np.ndarray, events: List, sensors: List[str], lookback: int = 3) -> None:
 
     # kernel: np.ndarray = np.array([*[-1/delta_lookback for i in range(delta_lookback)], 1, *[0 for i in range(delta_lookback)]])
