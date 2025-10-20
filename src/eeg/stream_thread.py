@@ -120,20 +120,23 @@ def eeg_loop(num_samples_to_buffer: int = Settings.BUFFER_LENGTH, current_mode: 
 
             num_samples = samples.shape[0]
 
-            total_number_off_sample += num_samples
+            # Detect not connect after buffering
+            if num_samples == 0 and eeg.status.status_manager.muse_has_buffered:
+                number_bad_sample += 1
 
-            if num_samples == 0:
+                if number_bad_sample > 100:
+
+                    number_bad_sample = 0
+                    raise MuseNotConnected()
+
                 continue
-            #     number_bad_sample += 1
 
-            #     if number_bad_sample > 100:
+            else:
 
-            #         raise MuseNotConnected()
+                number_bad_sample = 0
 
-            #     continue
-
-            # else:
-            #     number_bad_sample = 0
+            if num_samples != 0:
+                total_number_off_sample += num_samples
             
             buffer = np.concat([buffer[num_samples:], samples])
             timestamp_buffer = np.concat([timestamp_buffer[num_samples:], timestamps])

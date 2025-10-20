@@ -1,12 +1,16 @@
-import json
+import json, threading, time
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from .router import websocket_router
 from .websocket import manager
+from eeg.status import status_manager
 
-from typing import Dict
+from typing import Dict, Generator
+
+lock = threading.Lock()
 
 app = FastAPI()
 
@@ -21,6 +25,28 @@ app.add_middleware(
 @app.get('/')
 async def base() -> Dict:
     return {'message': 'Use the Force, Luke.'}
+
+# Status Updater
+@app.get('/status-updates')
+async def update() -> StreamingResponse:
+
+    def status_generator() -> Generator[str, None, None]:
+        
+        last_value: str = 'not connected'
+        
+        yield f"data: {json.dumps({'status': last_value})}\n\n"
+        
+        while True:
+            
+            with lock:
+                if last_value != status_manager.status:
+                    last_value = status_manager.status
+                    # Format for SSE
+                    yield f"data: {json.dumps({'status': last_value})}\n\n"
+                
+            time.sleep(0.1)
+
+    return StreamingResponse(status_generator(), media_type="text/event-stream")
 
 @app.websocket("/event-manager")
 async def endpoint(websocket: WebSocket) -> None:

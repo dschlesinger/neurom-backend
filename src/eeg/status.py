@@ -20,10 +20,10 @@ class MuseStatusManager:
         status: str = 'not connected'
         
         if self.stream_started and self.muse_has_buffered:
-            status = 'ready'
+            status = 'streaming'
             
         elif self.stream_started:
-            status = 'not buffered'
+            status = 'buffering'
             
         if self.status != status:
             print(f'New status {status}')
