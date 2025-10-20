@@ -1,6 +1,7 @@
-import argparse, uvicorn
+import argparse, uvicorn, threading
 
 from server.main import app
+from eeg.stream_thread import eeg_loop
 
 def main() -> None:
     parser = argparse.ArgumentParser(description='Main Muse and Frontend Connection Loop')    
@@ -14,6 +15,9 @@ def main() -> None:
     if args.dummy:
         print('Running in test mode')
         # TODO
+
+    muse_loop_thread = threading.Thread(target=eeg_loop, daemon=True)
+    muse_loop_thread.start()
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
 

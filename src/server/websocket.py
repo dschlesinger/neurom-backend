@@ -4,6 +4,8 @@ from fastapi import WebSocket, WebSocketDisconnect
 
 from eeg.schema import DataPoint
 
+from typing import Dict
+
 class WebsocketManager:
 
     def __init__(self) -> None:
@@ -34,7 +36,7 @@ class WebsocketManager:
             'data': {},
         })
 
-    async def send_gathered_example(self, dp: DataPoint) -> None:
+    async def send_gathered_example(self, anom_data: Dict) -> None:
 
         if self.current_connection is None:
             print('Tried to return but no websocket active', 'ping')
@@ -43,7 +45,7 @@ class WebsocketManager:
         await self.current_connection.send_json({
             'type': 'gathered_datapoint',
             'data': {
-                'potentials': dp.anom.data.tolist()
+                'potentials': anom_data
             },
         })
 

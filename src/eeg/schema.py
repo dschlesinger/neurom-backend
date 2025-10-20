@@ -57,13 +57,15 @@ class DataPoint(BaseModel):
     @model_validator(mode='before')
     def init_anom(cls, value: Dict) -> Self:
 
-        value['anom'] = Anomaly(**value['anom'])
+        if not isinstance(value['anom'], Anomaly):
+
+            value['anom'] = Anomaly(**value['anom'])
         
         return value
         
 if __name__ == '__main__':
 
-    with open('~/neurom-backend/data_store/examples.json', 'r') as j:
+    with open('data_store/examples.json', 'r') as j:
 
         data = [d for d in json.load(j)]
 
