@@ -2,9 +2,13 @@
 Take websocket pings from front end and route them
 to the correct function
 """
+import json
+
+import eeg.data
+import keybinding.model
+
 from .websocket import WebsocketManager, manager
 from eeg.emulator import emulate_event_emission
-import eeg.data
 from eeg.stream_thread import wait_for_new_event
 
 from typing import Dict
@@ -16,6 +20,22 @@ async def websocket_router(message: Dict, manager: WebsocketManager) -> None:
         case 'ping':
 
             print('Recieved ping')
+
+        case 'start_test':
+
+            dp = await wait_for_new_event(message['data']['classification'])
+
+            pred = keybinding.model.model.predict(dp.anom)
+
+            await manager.return_test_result({
+                'guess': pred,
+                'correct': message['data']['classification']
+            }, [
+                {
+                    'sensor': s,
+                    'data': d
+                }   for s, d in zip(dp.anom.sensors, dp.anom.data.T.tolist())
+            ])
 
         case 'start_anomoly_detection':
 
@@ -44,6 +64,33 @@ async def websocket_router(message: Dict, manager: WebsocketManager) -> None:
 
             # Remove last
             eeg.data.datapoints.pop()
+
+        case 'change_used_datasets':
+
+            keybinding.model.model.load_data([
+                f'data_store/{ds}.json' for ds in message['data']['used_datasets']
+            ])
+
+            await manager.send_all_artifacts(keybinding.model.model.get_all_classifications())
+            
+        case 'list_available_datasets':
+            await manager.send_all_datasets([ds.removesuffix('.json') for ds in keybinding.model.model.get_all_datasets()])
+
+        case 'save_dataset':
+
+            name = message['data']['dataset_name']
+
+            with open(f'data_store/{name}.json', 'w') as j:
+
+                j.write(
+                    json.dumps(
+                        [d.model_dump() for d in eeg.data.datapoints]
+                    )
+                )
+
+            eeg.data.datapoints = []
+
+            await manager.send_all_datasets([ds.removesuffix('.json') for ds in keybinding.model.model.get_all_datasets()])
 
         case _:
 

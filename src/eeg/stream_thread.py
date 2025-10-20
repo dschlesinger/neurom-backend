@@ -26,7 +26,7 @@ class MuseNotConnected(Exception):
     pass
 
 # For now
-keybindings_on: bool = True
+keybindings_on: bool = False
 
 def connect_to_eeg() -> Union['inlet', None]:
     """Returns inlet else none"""
@@ -59,14 +59,13 @@ def connect_to_eeg() -> Union['inlet', None]:
         muse_thread = threading.Thread(target=stream_handler, args=(muses[0]['address'],), daemon=True)
         muse_thread.start()
 
+        with lock: eeg.status.status_manager.set_status(stream_started=True)
+
+        streams = resolve_byprop('type', 'EEG', timeout=10)
+
         muse_view = threading.Thread(target=view, daemon=True)
         muse_view.start()
 
-        with lock: eeg.status.status_manager.set_status(stream_started=True)
-
-        sleep(10)
-
-        streams = resolve_byprop('type', 'EEG', timeout=5)
         try:
             inlet = StreamInlet(streams[0], max_chunklen=12)  # IndexError if streams is empty
         except IndexError:
@@ -86,7 +85,7 @@ def eeg_loop(num_samples_to_buffer: int = Settings.BUFFER_LENGTH, current_mode: 
 
     total_number_off_sample: int = 0
 
-    last_event: Anomaly | None = None
+    prev_event_st: float = 0
 
     # Connect to eeg
     print('Connecting to EEG')
@@ -156,21 +155,22 @@ def eeg_loop(num_samples_to_buffer: int = Settings.BUFFER_LENGTH, current_mode: 
 
                     with lock:
 
-                        if not events:
-                            continue
+                        for e in events[::-1]:
 
-                        elif last_event is None and events[-1].final:
+                            if e.start == prev_event_st:
+                                # We found our refrence
+                                break
 
-                            last_event = events[-1]
+                            if e.start != prev_event_st and e.final:
 
-                            emit_keybind(events)
+                                # we have a new event
+                                print('Found event', {e.data.shape})
 
-                        elif last_event is not None and last_event.start != events[-1].start and events[-1].final:
+                                emit_keybind([e])
 
-                            emit_keybind(events)
+                                prev_event_st = e.start
+                                break
 
-                            last_event = events[-1]
-                    
                     # # To avoid circular import, should redo this at somepoint very wack
                     # from detector.model import check_for_emission, model, Model
                     
@@ -223,7 +223,7 @@ async def wait_for_new_event(classification: str) -> DataPoint:
         else:
 
             prev_event_st = 0
-            
+
     while True:
 
         with lock:

@@ -1,4 +1,5 @@
-import numpy as np, json, math, scipy, matplotlib.pyplot as plt
+import numpy as np, json, math, scipy, \
+    os
 
 from itertools import groupby
 from dtaidistance import dtw
@@ -52,6 +53,8 @@ class Model(BaseModel):
         self.current_datasets = filepaths
         
         datapoints = []
+
+        print('HEre')
         
         for f in filepaths:
             with open(f, 'r') as e:
@@ -83,6 +86,10 @@ class Model(BaseModel):
             return []
 
         return list(set([d.classification for d in self.datapoints]))
+
+    def get_all_datasets(self) -> List[str]:
+
+        return os.listdir('data_store')
         
     def predict(self, artifact: Anomaly) -> str:
         
@@ -90,7 +97,7 @@ class Model(BaseModel):
             
             raise NoDatasetLoaded
         
-        x = artifact.data
+        x = artifact.data.T
         
         classes = [dp.classification for dp in self.datapoints]
         
@@ -126,16 +133,7 @@ class Model(BaseModel):
         
         a = (a - a.mean()) / a.std()
         
-        probs = scipy.special.softmax(-a)
-
-        # print(probs)
-        fig, axs = plt.subplots(5)
-
-        for a, xi in zip(axs, x):
-
-            a.plot(xi)
-
-        plt.savefig(f'edebug/event{artifact.start}.png')
+        probs = scipy.special.softmax(a)
         
         for pro, cls in zip(probs, cls_choice):
             
@@ -144,4 +142,4 @@ class Model(BaseModel):
         return cls_choice[probs.argmin().item()]
     
 model = Model()
-model.load_data(['./data_store/examples.json'])
+# model.load_data(['./data_store/examples.json'])
