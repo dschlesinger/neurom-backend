@@ -5,6 +5,7 @@ from pylsl import StreamInlet, resolve_byprop
 from time import sleep
 
 import eeg.status
+import keybinding.model
 from cli.config import Settings
 from eeg.detect import detect_anamolies
 from .schema import DataPoint, Anomaly
@@ -22,11 +23,10 @@ sensors = None
 # Lock for threading safely
 lock = threading.Lock()
 
+keybinding_que: List[str] = []
+
 class MuseNotConnected(Exception):
     pass
-
-# For now
-keybindings_on: bool = False
 
 def connect_to_eeg() -> Union['inlet', None]:
     """Returns inlet else none"""
@@ -81,7 +81,7 @@ def connect_to_eeg() -> Union['inlet', None]:
         return None
     
 def eeg_loop(num_samples_to_buffer: int = Settings.BUFFER_LENGTH, current_mode: bool = False) -> None:
-    global buffer, timestamp_buffer, events, sensors
+    global buffer, timestamp_buffer, events, sensors, keybinding_que
 
     total_number_off_sample: int = 0
 
@@ -137,9 +137,16 @@ def eeg_loop(num_samples_to_buffer: int = Settings.BUFFER_LENGTH, current_mode: 
 
             if num_samples != 0:
                 total_number_off_sample += num_samples
+
+            try:
             
-            buffer = np.concat([buffer[num_samples:], samples])
-            timestamp_buffer = np.concat([timestamp_buffer[num_samples:], timestamps])
+                buffer = np.concat([buffer[num_samples:], samples])
+                timestamp_buffer = np.concat([timestamp_buffer[num_samples:], timestamps])
+
+            except ValueError:
+
+                print(f'Skipping iteration found sample with shape {samples.shape}')
+                continue
 
             # Give time to buffer
             if total_number_off_sample > num_samples_to_buffer:
@@ -154,7 +161,7 @@ def eeg_loop(num_samples_to_buffer: int = Settings.BUFFER_LENGTH, current_mode: 
 
                     detect_anamolies(buffer, timestamp_buffer, events, sensors)
 
-                if keybindings_on:
+                if eeg.status.keybinding_on:
 
                     with lock:
 
@@ -169,7 +176,17 @@ def eeg_loop(num_samples_to_buffer: int = Settings.BUFFER_LENGTH, current_mode: 
                                 # we have a new event
                                 print('Found event', {e.data.shape})
 
-                                emit_keybind([e])
+                                c = keybinding.model.model.predict(e)
+
+                                keybinding_que.append(c)
+
+                                print(c)
+
+                                delete = emit_keybind(keybinding_que)
+
+                                if delete: 
+                                    events = []
+                                    keybinding_que = []
 
                                 prev_event_st = e.start
                                 break

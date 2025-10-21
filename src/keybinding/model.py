@@ -88,18 +88,40 @@ class Model(BaseModel):
     def get_all_datasets(self) -> List[str]:
 
         return os.listdir('data_store')
+    
+    def test_on_data(self) -> List:
+
+        tr = []
+
+        for d in self.datapoints:
+
+            p = self.predict(d.anom, exclude=d)
         
-    def predict(self, artifact: Anomaly) -> str:
+            tr.append({
+                'guess': p,
+                'correct': d.classification,
+            })
+
+        return tr
+        
+    def predict(self, artifact: Anomaly, exclude: DataPoint | None = None) -> str:
         
         if self.datapoints is None:
             
-            raise NoDatasetLoaded
+            print('No Dataset Loaded')
+            return
+        
+        if exclude is not None:
+
+            avail_data = [dp for dp in self.datapoints if dp != exclude]
+
+        else: avail_data = self.datapoints
         
         x = artifact.data.T
         
-        classes = [dp.classification for dp in self.datapoints]
+        classes = [dp.classification for dp in avail_data]
         
-        w = pad_center([dp.anom.data for dp in self.datapoints], max_len=x.shape[1])
+        w = pad_center([dp.anom.data for dp in avail_data], max_len=x.shape[1])
         
         if w.shape[1] > x.shape[1]:
             # Pad x to reach w

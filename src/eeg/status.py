@@ -31,3 +31,5 @@ class MuseStatusManager:
             self.status = status
                 
 status_manager = MuseStatusManager()
+
+keybinding_on = False

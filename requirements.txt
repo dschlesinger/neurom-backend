@@ -5,3 +5,5 @@ muselsl
 pydantic
 scikit-learn
 dtaidistance
+pyautogui
+PyDirectInput

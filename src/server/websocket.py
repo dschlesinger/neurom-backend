@@ -69,6 +69,19 @@ class WebsocketManager:
             },
         })
 
+    async def test_on_data(self, tr: List) -> None:
+
+        if self.current_connection is None:
+            print('Tried to return but no websocket active', 'ping')
+            return
+
+        await self.current_connection.send_json({
+            'type': 'update_test_data',
+            'data': {
+                'on_data_results': tr
+            },
+        })
+
     async def send_all_datasets(self, datasets: List[str]) -> None:
 
         if self.current_connection is None:

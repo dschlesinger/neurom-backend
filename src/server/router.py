@@ -4,11 +4,11 @@ to the correct function
 """
 import json
 
-import eeg.data
-import keybinding.model
+import eeg.data, eeg.status
+import keybinding.model, keybinding.handler
 
 from .websocket import WebsocketManager, manager
-from eeg.emulator import emulate_event_emission
+# from eeg.emulator import emulate_event_emission
 from eeg.stream_thread import wait_for_new_event
 
 from typing import Dict
@@ -55,10 +55,26 @@ async def websocket_router(message: Dict, manager: WebsocketManager) -> None:
         case 'reset_anomoly_gathering':
 
             eeg.data.datapoints = []
+
+        case 'turn_keybinds':
+
+            print(f'Turning Keybinds {message['data']['state']}')
+
+            eeg.status.keybinding_on = message['data']['state']
+
+        case 'set_keybinds':
+
+            print(f'Setting keybindings')
+
+            eeg.status.keybinding_on = message['data']['keybindings']
         
         case 'debug_datapoint':
 
             print(eeg.data.datapoints.__len__())
+
+        case 'test_on_data':
+
+            await manager.test_on_data(keybinding.model.model.test_on_data())
 
         case 'last_anomoly_no_good':
 
