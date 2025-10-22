@@ -4,7 +4,7 @@ class Settings:
 
     BUFFER_LENGTH: int = 1000
 
-    EVENT_MERGE_TIME: float = 0.3
+    EVENT_MERGE_TIME: float = 0.4
 
     EVENT_STD: float = 1.5
 

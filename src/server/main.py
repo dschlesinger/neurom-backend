@@ -4,6 +4,8 @@ from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+import eeg.stream_thread
+
 from .router import websocket_router
 from .websocket import manager
 from eeg.status import status_manager
@@ -28,7 +30,7 @@ async def base() -> Dict:
 
 # Status Updater
 @app.get('/status-updates')
-async def update() -> StreamingResponse:
+async def status_update() -> StreamingResponse:
 
     def status_generator() -> Generator[str, None, None]:
         
@@ -43,6 +45,28 @@ async def update() -> StreamingResponse:
                     last_value = status_manager.status
                     # Format for SSE
                     yield f"data: {json.dumps({'status': last_value})}\n\n"
+                
+            time.sleep(0.1)
+
+    return StreamingResponse(status_generator(), media_type="text/event-stream")
+
+# Kb Updater
+@app.get('/keybinding-que')
+async def kb_update() -> StreamingResponse:
+
+    def status_generator() -> Generator[str, None, None]:
+        
+        last_value: str = []
+        
+        yield f"data: {json.dumps({'que': last_value})}\n\n"
+        
+        while True:
+            
+            with lock:
+                if last_value != eeg.stream_thread.keybinding_que:
+                    last_value = eeg.stream_thread.keybinding_que
+                    # Format for SSE
+                    yield f"data: {json.dumps({'que': last_value})}\n\n"
                 
             time.sleep(0.1)
 

@@ -14,9 +14,6 @@ keysdown = set()
 def emit_keybind(events: List[str], max_que_length: int = 5) -> bool:
     """Returns true if finds keybind or hit limit else false"""
 
-    # no future matches
-    fut_match = False
-
     print(events)
 
     if len(events) > max_que_length:
@@ -67,9 +64,4 @@ def emit_keybind(events: List[str], max_que_length: int = 5) -> bool:
                 
             return True
         
-        elif kb['ordered_artifacts'] == events[0:len(kb['ordered_artifacts'])]:
-
-            # There are potential future matches
-            fut_match = True
-
-    return not fut_match
+    return False
