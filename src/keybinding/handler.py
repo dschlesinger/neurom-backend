@@ -17,7 +17,7 @@ def emit_keybind(events: List[str], max_que_length: int = 5) -> bool:
     # no future matches
     fut_match = False
 
-    print(events.__len__())
+    print(events)
 
     if len(events) > max_que_length:
         return True

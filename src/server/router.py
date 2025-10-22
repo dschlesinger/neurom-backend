@@ -66,7 +66,7 @@ async def websocket_router(message: Dict, manager: WebsocketManager) -> None:
 
             print(f'Setting keybindings')
 
-            eeg.status.keybinding_on = message['data']['keybindings']
+            keybinding.handler.keybindings = message['data']['keybindings']
         
         case 'debug_datapoint':
 

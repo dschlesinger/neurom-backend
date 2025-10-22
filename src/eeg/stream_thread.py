@@ -121,7 +121,7 @@ def eeg_loop(num_samples_to_buffer: int = Settings.BUFFER_LENGTH, current_mode: 
             num_samples = samples.shape[0]
 
             # Detect not connect after buffering
-            if num_samples == 0 and eeg.status.status_manager.muse_has_buffered:
+            if (num_samples == 0 or samples.shape[0] == 0) and eeg.status.status_manager.muse_has_buffered:
                 number_bad_sample += 1
 
                 if number_bad_sample > 100:
