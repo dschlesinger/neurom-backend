@@ -155,9 +155,9 @@ class Model(BaseModel):
         
         probs = scipy.special.softmax(a)
         
-        # for pro, cls in zip(probs, cls_choice):
+        for pro, cls in zip(probs, cls_choice):
             
-        #     print(f'\t{cls}: {pro.item():.2f}')
+            print(f'\t{cls}: {pro.item():.2f}')
         
         return cls_choice[probs.argmin().item()]
     
