@@ -56,17 +56,20 @@ async def kb_update() -> StreamingResponse:
 
     def status_generator() -> Generator[str, None, None]:
         
-        last_value: str = []
+        last_value: list = []
         
         yield f"data: {json.dumps({'que': last_value})}\n\n"
         
         while True:
             
             with lock:
-                if last_value != eeg.stream_thread.keybinding_que:
-                    last_value = eeg.stream_thread.keybinding_que
-                    # Format for SSE
-                    yield f"data: {json.dumps({'que': last_value})}\n\n"
+                current_value = eeg.stream_thread.keybinding_que.copy()
+                
+            if last_value != current_value:
+                last_value = current_value
+                print('Updating Frontend')
+                # Format for SSE
+                yield f"data: {json.dumps({'que': last_value})}\n\n"
                 
             time.sleep(0.1)
 

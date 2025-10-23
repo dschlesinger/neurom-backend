@@ -4,7 +4,7 @@ to the correct function
 """
 import json
 
-import eeg.data, eeg.status
+import eeg.data, eeg.status, eeg.stream_thread
 import keybinding.model, keybinding.handler
 
 from .websocket import WebsocketManager, manager
@@ -68,6 +68,10 @@ async def websocket_router(message: Dict, manager: WebsocketManager) -> None:
 
             keybinding.handler.keybindings = message['data']['keybindings']
         
+        case 'clear_que':
+
+            eeg.stream_thread.keybinding_que = []
+        
         case 'debug_datapoint':
 
             print(eeg.data.datapoints.__len__())
@@ -79,7 +83,8 @@ async def websocket_router(message: Dict, manager: WebsocketManager) -> None:
         case 'last_anomoly_no_good':
 
             # Remove last
-            eeg.data.datapoints.pop()
+            if eeg.data.datapoints:
+                eeg.data.datapoints.pop()
 
         case 'change_used_datasets':
 

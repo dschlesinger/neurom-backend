@@ -16,6 +16,8 @@ def emit_keybind(events: List[str], max_que_length: int = 5) -> bool:
 
     print(events)
 
+    found_possible: bool = False
+
     if len(events) > max_que_length:
         return True
     
@@ -64,4 +66,8 @@ def emit_keybind(events: List[str], max_que_length: int = 5) -> bool:
                 
             return True
         
-    return False
+        elif kb['ordered_artifacts'][:len(events)] == events:
+
+            found_possible = True
+        
+    return not found_possible

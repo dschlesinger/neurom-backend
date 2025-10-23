@@ -112,7 +112,7 @@ def eeg_loop(num_samples_to_buffer: int = Settings.BUFFER_LENGTH, current_mode: 
             if inlet is None:
                 raise MuseNotConnected()
                 
-            samples, timestamps = inlet.pull_chunk(timeout=5, max_samples=Settings.MAX_SAMPLES_PER_CHUNK)
+            samples, timestamps = inlet.pull_chunk(timeout=30, max_samples=Settings.MAX_SAMPLES_PER_CHUNK)
 
             samples = np.array(samples)
 
@@ -190,18 +190,6 @@ def eeg_loop(num_samples_to_buffer: int = Settings.BUFFER_LENGTH, current_mode: 
 
                                 prev_event_st = e.start
                                 break
-
-                    # # To avoid circular import, should redo this at somepoint very wack
-                    # from detector.model import check_for_emission, model, Model
-                    
-                    # model = Model()
-                    
-                    # model.load_data('data_store/examples.json')
-                    
-                    # check_for_emission(model)
-
-            # Sleep? No makes lag
-            # sleep(0.01)
 
         except KeyboardInterrupt:
             pass
