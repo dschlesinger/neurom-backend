@@ -1,7 +1,8 @@
-import json
+import json, os
 
 from fastapi import WebSocket, WebSocketDisconnect
 
+import keybinding.handler
 from eeg.schema import DataPoint
 
 from typing import Dict, List
@@ -79,6 +80,32 @@ class WebsocketManager:
             'type': 'update_test_data',
             'data': {
                 'on_data_results': tr
+            },
+        })
+
+    async def send_all_keybindings(self) -> None:
+
+        if self.current_connection is None:
+            print('Tried to return but no websocket active', 'ping')
+            return
+
+        await self.current_connection.send_json({
+            'type': 'send_all_keybindings',
+            'data': {
+                'keybindings': [kb.removesuffix('.json') for kb in os.listdir('keybind_store')]
+            },
+        })
+
+    async def update_keybindings(self) -> None:
+
+        if self.current_connection is None:
+            print('Tried to return but no websocket active', 'ping')
+            return
+
+        await self.current_connection.send_json({
+            'type': 'update_keybindings',
+            'data': {
+                'keybindings': keybinding.handler.keybindings
             },
         })
 

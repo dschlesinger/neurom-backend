@@ -4,9 +4,9 @@ class Settings:
 
     BUFFER_LENGTH: int = 1000
 
-    EVENT_MERGE_TIME: float = 0.4
+    EVENT_MERGE_TIME: float = 0.32
 
-    EVENT_STD: float = 1.5
+    EVENT_STD: float = 2.0  
 
     # 1 should work cannot guarente anything else
     MAX_SAMPLES_PER_CHUNK: int = 1

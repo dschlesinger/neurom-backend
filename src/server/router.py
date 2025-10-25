@@ -67,6 +67,30 @@ async def websocket_router(message: Dict, manager: WebsocketManager) -> None:
             print(f'Setting keybindings')
 
             keybinding.handler.keybindings = message['data']['keybindings']
+
+        case 'save_keybinds':
+
+            print('Saving keybinds')
+
+            with open(f'keybind_store/{message["data"]["name"]}.json', 'w') as j:
+
+                j.write(json.dumps(message['data']['keybinds']))
+
+            await manager.send_all_keybindings()
+
+        case 'load_keybinds':
+
+            print('Loading keybinds')
+
+            with open(f'keybind_store/{message["data"]["name"]}.json', 'r') as j:
+
+                keybinding.handler.keybindings = json.load(j)
+
+            await manager.update_keybindings()
+
+        case 'get_all_keybindings':
+
+            await manager.send_all_keybindings()
         
         case 'clear_que':
 

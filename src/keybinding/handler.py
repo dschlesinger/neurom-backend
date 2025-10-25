@@ -11,6 +11,13 @@ keybindings = []
 
 keysdown = set()
 
+js_keys_to_py = {
+    'ArrowUp': 'up',
+    'ArrowDown': 'down',
+    'ArrowLeft': 'left',
+    'ArrowRight': 'right',
+}
+
 def emit_keybind(events: List[str], max_que_length: int = 5) -> bool:
     """Returns true if finds keybind or hit limit else false"""
 
@@ -35,6 +42,9 @@ def emit_keybind(events: List[str], max_que_length: int = 5) -> bool:
 
                 for kd in keysdown:
 
+                    if kd in js_keys_to_py:
+                        kd = js_keys_to_py[kd]
+
                     p.keyUp(kd)
 
                 return True
@@ -44,23 +54,33 @@ def emit_keybind(events: List[str], max_que_length: int = 5) -> bool:
                 # Assume with one with all
                 if kb['keybind']['keys'][0][0] not in keysdown:
 
-                    p.keyDown(kb['keybind']['keys'][0])
+                    if kb['keybind']['keys'][0][0] in js_keys_to_py:
+                        kd = js_keys_to_py[kb['keybind']['keys'][0][0]]
+                    else:
+                        kd = kb['keybind']['keys'][0][0]
 
-                    for k in kb['keybind']['keys'][0]:
+                    p.keyDown(kd)
 
-                        keysdown.add(k)
+                    keysdown.add(kd)
                 
                 else:
 
-                    p.keyUp(kb['keybind']['keys'][0])
+                    if kb['keybind']['keys'][0][0] in js_keys_to_py:
+                        kd = js_keys_to_py[kb['keybind']['keys'][0][0]]
+                    else:
+                        kd = kb['keybind']['keys'][0][0]
 
-                    for k in kb['keybind']['keys'][0]:
+                    p.keyUp(kd)
 
-                        keysdown.remove(k)
+                    keysdown.remove(kd)
 
             else:
 
                 for s in kb['keybind']['keys']:
+                    
+                    s = [js_keys_to_py.get(si, si) for si in s]
+
+                    print('Doing', s)
 
                     p.press(s)
                 
