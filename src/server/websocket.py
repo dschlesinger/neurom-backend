@@ -57,6 +57,19 @@ class WebsocketManager:
             },
         })
 
+    async def send_function_kbs(self) -> None:
+
+        if self.current_connection is None:
+            print('Tried to return but no websocket active', 'ping')
+            return
+
+        await self.current_connection.send_json({
+            'type': 'send_functional_kbs',
+            'data': {
+                'func_kbs': list(keybinding.handler.FUNCTIONAL_KBS.keys())
+            },
+        })
+
     async def send_gathered_example(self, anom_data: Dict) -> None:
 
         if self.current_connection is None:

@@ -30,6 +30,10 @@ FUNCTIONAL_KBS = {
     'Mouse Down': lambda: p.moveRel(0, 100),
     'Mouse Right': lambda: p.moveRel(100, 0),
     'Mouse Left': lambda: p.moveRel(-100, 0),
+    'Slight Mouse Up': lambda: p.moveRel(0, -30),
+    'Slight Mouse Down': lambda: p.moveRel(0, 30),
+    'Slight Mouse Right': lambda: p.moveRel(30, 0),
+    'Slight Mouse Left': lambda: p.moveRel(-30, 0),
 }
 
 

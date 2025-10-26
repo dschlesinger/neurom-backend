@@ -78,6 +78,10 @@ async def websocket_router(message: Dict, manager: WebsocketManager) -> None:
 
             await manager.send_all_keybindings()
 
+        case 'get_functional_kbs':
+
+            await manager.send_function_kbs()
+
         case 'load_keybinds':
 
             print('Loading keybinds')
