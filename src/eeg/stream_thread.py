@@ -25,33 +25,36 @@ lock = threading.Lock()
 
 keybinding_que: List[str] = []
 
+muse_thread: threading.Thread | None = None
+
 class MuseNotConnected(Exception):
     pass
 
 def connect_to_eeg() -> Union['inlet', None]:
     """Returns inlet else none"""
-    global sensors
+    global sensors, muse_thread
 
     # Create and set event loop for this thread
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
 
     try:
+        # Clean up old thread if it exists
+        if muse_thread is not None and muse_thread.is_alive():
+            print('Waiting for old muse thread to terminate...')
+            muse_thread.join(timeout=5)  # Wait up to 5 seconds
 
         print('Finding muses...')
         muses = list_muses()
 
         print(muses)
-
         print('muses found', muses)
 
-        # Handles len == 0 or None
         if not muses:
             print('No muses found')
             return None
         
         def stream_handler(address: str):
-
             import asyncio
             asyncio.set_event_loop(asyncio.new_event_loop())
             stream(address=address)
@@ -61,27 +64,34 @@ def connect_to_eeg() -> Union['inlet', None]:
 
         with lock: eeg.status.status_manager.set_status(stream_started=True)
 
-        streams = resolve_byprop('type', 'EEG', timeout=10)
+        # Give the stream more time to initialize
+        print('Waiting for stream to initialize...')
+        sleep(2)  # Increased wait time
 
-        muse_view = threading.Thread(target=view, daemon=True)
-        muse_view.start()
+        streams = resolve_byprop('type', 'EEG', timeout=2)  # Increased timeout
 
-        try:
-            inlet = StreamInlet(streams[0], max_chunklen=12)  # IndexError if streams is empty
-        except IndexError:
+        if not streams:
+            print('No EEG streams found')
             with lock: eeg.status.status_manager.set_status(stream_started=False)
-            raise Exception('Could not find stream')
+            return None
+
+        # Viewing is erroring?
+        # muse_view = threading.Thread(target=view, daemon=True)
+        # muse_view.start()
+
+        inlet = StreamInlet(streams[0], max_chunklen=12)
         
         sensors = get_channel_names(inlet)
 
         return inlet
     
     except Exception as e:
+        print(f'Connection error: {e}')
         with lock: eeg.status.status_manager.set_status(stream_started=False)
         return None
     
 def eeg_loop(num_samples_to_buffer: int = Settings.BUFFER_LENGTH, current_mode: bool = False) -> None:
-    global buffer, timestamp_buffer, events, sensors, keybinding_que
+    global buffer, timestamp_buffer, events, sensors, keybinding_que, muse_thread
 
     total_number_off_sample: int = 0
 
@@ -105,18 +115,22 @@ def eeg_loop(num_samples_to_buffer: int = Settings.BUFFER_LENGTH, current_mode: 
 
     number_bad_sample = 0
 
+    i = 0
+
     while True:
 
         try:
 
-            if inlet is None:
+            if inlet is None or not muse_thread.is_alive():
                 raise MuseNotConnected()
                 
-            samples, timestamps = inlet.pull_chunk(timeout=30, max_samples=Settings.MAX_SAMPLES_PER_CHUNK)
+            samples, timestamps = inlet.pull_chunk(timeout=2, max_samples=Settings.MAX_SAMPLES_PER_CHUNK)
 
             samples = np.array(samples)
 
             timestamps = np.array(timestamps)
+
+            # if i % 1000 == 0: print('Sample Shape', samples.shape)
 
             num_samples = samples.shape[0]
 
@@ -147,6 +161,8 @@ def eeg_loop(num_samples_to_buffer: int = Settings.BUFFER_LENGTH, current_mode: 
 
                 print(f'Skipping iteration found sample with shape {samples.shape}')
                 continue
+
+            i += 1
 
             # Give time to buffer
             if total_number_off_sample > num_samples_to_buffer:
@@ -194,24 +210,29 @@ def eeg_loop(num_samples_to_buffer: int = Settings.BUFFER_LENGTH, current_mode: 
         except KeyboardInterrupt:
             pass
         except MuseNotConnected:
-
             print('Muse disconnected attempting reconnect')
-            with lock: eeg.status.status_manager.set_status(stream_started=False)
+            with lock: 
+                eeg.status.status_manager.set_status(stream_started=False)
+                eeg.status.status_manager.set_status(muse_has_buffered=False)  # Reset buffer status
+
+            # Reset counters
+            total_number_off_sample = 0
+            number_bad_sample = 0
 
             sleep(3)
             inlet = connect_to_eeg()
             
-            print(sensors)
-    
-            if sensors is not None:
-            
+            print(f'Reconnection result: {inlet}')
+            print(f'Sensors: {sensors}')
+
+            # Reconnects but streams blank data?
+
+            if sensors is not None and inlet is not None:
                 buffer = np.zeros((Settings.BUFFER_LENGTH, len(sensors)))
                 timestamp_buffer = np.zeros((Settings.BUFFER_LENGTH,))
-                
             else:
-                # Force reconnection
                 inlet = None
-                # raise Exception('Could not find sensors')
+                print('Failed to reconnect, will retry...')
             
             continue
 

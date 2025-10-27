@@ -1,5 +1,5 @@
 [project]
-name = "bostonhacks-muse-backend"
+name = "neurom-muse-backend"
 version = "0.0.0"
 authors = [
   { name="Denali Schlesinger", email="dsch28@bu.edu" },

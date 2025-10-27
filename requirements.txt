@@ -1,7 +1,7 @@
 fastapi
 uvicorn
 websockets
-muselsl
+muselsl @ git+https://github.com/dschlesinger/muse-lsl.git
 pydantic
 scikit-learn
 dtaidistance
