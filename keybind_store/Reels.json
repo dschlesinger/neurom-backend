@@ -1,0 +1,1 @@
+[{"ordered_artifacts": ["Down Look"], "keybind": {"hold": false, "keys": [["ArrowDown"]]}, "reset": false}, {"ordered_artifacts": ["Up Look"], "keybind": {"hold": false, "keys": [["ArrowUp"]]}, "reset": false}, {"ordered_artifacts": ["Scrunch"], "keybind": {"hold": false, "keys": [["Left Click"]]}, "reset": false}]

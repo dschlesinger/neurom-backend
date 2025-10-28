@@ -150,6 +150,17 @@ class Model(BaseModel):
             cls_values.append(sum(vls) / len(vls))
 
         a = np.array(cls_values)
+
+        cont_score = a.min() / x.shape[0]
+
+        print(a)
+        print(a.min())
+        print(cont_score)
+
+        # Print logits
+        if cont_score > 275:
+
+            print('Continuity score exceeds threshhold may be false emision')
         
         a = (a - a.mean()) / a.std()
         

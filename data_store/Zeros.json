@@ -1,0 +1,20 @@
+[
+    {
+        "anom": {
+            "start": 1761328460.0477695,
+            "end": 1761328460.477491,
+            "data": [
+                [0.0, 0.0, 0.0, 0.0, 0.0]
+            ],
+            "sensors": [
+                "TP9",
+                "AF7",
+                "AF8",
+                "TP10",
+                "Right AUX"
+            ],
+            "final": true
+        },
+        "classification": "Zero"
+    }
+]
