@@ -1,4 +1,4 @@
-import json, threading, time
+import asyncio, json
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.responses import StreamingResponse
@@ -10,9 +10,7 @@ from .router import websocket_router
 from .websocket import manager
 from eeg.status import status_manager
 
-from typing import Dict, Generator
-
-lock = threading.Lock()
+from typing import AsyncGenerator, Dict
 
 app = FastAPI()
 
@@ -32,7 +30,7 @@ async def base() -> Dict:
 @app.get('/status-updates')
 async def status_update() -> StreamingResponse:
 
-    def status_generator() -> Generator[str, None, None]:
+    async def status_generator() -> AsyncGenerator[str, None]:
         
         last_value: str = 'not connected'
         
@@ -40,13 +38,13 @@ async def status_update() -> StreamingResponse:
         
         while True:
             
-            with lock:
+            with eeg.stream_thread.lock:
                 if last_value != status_manager.status:
                     last_value = status_manager.status
                     # Format for SSE
                     yield f"data: {json.dumps({'status': last_value})}\n\n"
                 
-            time.sleep(0.1)
+            await asyncio.sleep(0.1)
 
     return StreamingResponse(status_generator(), media_type="text/event-stream")
 
@@ -54,7 +52,7 @@ async def status_update() -> StreamingResponse:
 @app.get('/keybinding-que')
 async def kb_update() -> StreamingResponse:
 
-    def status_generator() -> Generator[str, None, None]:
+    async def status_generator() -> AsyncGenerator[str, None]:
         
         last_value: list = []
         
@@ -62,7 +60,7 @@ async def kb_update() -> StreamingResponse:
         
         while True:
             
-            with lock:
+            with eeg.stream_thread.lock:
                 current_value = eeg.stream_thread.keybinding_que.copy()
                 
             if last_value != current_value:
@@ -71,7 +69,7 @@ async def kb_update() -> StreamingResponse:
                 # Format for SSE
                 yield f"data: {json.dumps({'que': last_value})}\n\n"
                 
-            time.sleep(0.1)
+            await asyncio.sleep(0.1)
 
     return StreamingResponse(status_generator(), media_type="text/event-stream")
 

@@ -2,7 +2,7 @@
 Take websocket pings from front end and route them
 to the correct function
 """
-import json
+import asyncio, json
 
 import eeg.data, eeg.status, eeg.stream_thread
 import keybinding.model, keybinding.handler
@@ -12,6 +12,14 @@ from .websocket import WebsocketManager, manager
 from eeg.stream_thread import wait_for_new_event
 
 from typing import Dict
+
+def _read_json(path: str):
+    with open(path, 'r') as f:
+        return json.load(f)
+
+def _write_json(path: str, data) -> None:
+    with open(path, 'w') as f:
+        json.dump(data, f)
 
 async def websocket_router(message: Dict, manager: WebsocketManager) -> None:
     
@@ -58,7 +66,7 @@ async def websocket_router(message: Dict, manager: WebsocketManager) -> None:
 
         case 'turn_keybinds':
 
-            print(f'Turning Keybinds {message['data']['state']}')
+            print(f"Turning Keybinds {message['data']['state']}")
 
             eeg.status.keybinding_on = message['data']['state']
 
@@ -72,9 +80,11 @@ async def websocket_router(message: Dict, manager: WebsocketManager) -> None:
 
             print('Saving keybinds')
 
-            with open(f'keybind_store/{message["data"]["name"]}.json', 'w') as j:
-
-                j.write(json.dumps(message['data']['keybinds']))
+            await asyncio.to_thread(
+                _write_json,
+                f"keybind_store/{message['data']['name']}.json",
+                message['data']['keybinds'],
+            )
 
             await manager.send_all_keybindings()
 
@@ -86,9 +96,10 @@ async def websocket_router(message: Dict, manager: WebsocketManager) -> None:
 
             print('Loading keybinds')
 
-            with open(f'keybind_store/{message["data"]["name"]}.json', 'r') as j:
-
-                keybinding.handler.keybindings = json.load(j)
+            keybinding.handler.keybindings = await asyncio.to_thread(
+                _read_json,
+                f"keybind_store/{message['data']['name']}.json",
+            )
 
             await manager.update_keybindings()
 
@@ -98,7 +109,8 @@ async def websocket_router(message: Dict, manager: WebsocketManager) -> None:
         
         case 'clear_que':
 
-            eeg.stream_thread.keybinding_que = []
+            with eeg.stream_thread.lock:
+                eeg.stream_thread.keybinding_que = []
         
         case 'debug_datapoint':
 
@@ -129,13 +141,11 @@ async def websocket_router(message: Dict, manager: WebsocketManager) -> None:
 
             name = message['data']['dataset_name']
 
-            with open(f'data_store/{name}.json', 'w') as j:
-
-                j.write(
-                    json.dumps(
-                        [d.model_dump() for d in eeg.data.datapoints]
-                    )
-                )
+            await asyncio.to_thread(
+                _write_json,
+                f"data_store/{name}.json",
+                [d.model_dump() for d in eeg.data.datapoints],
+            )
 
             eeg.data.datapoints = []
 

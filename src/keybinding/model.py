@@ -14,25 +14,23 @@ class NoDatasetLoaded(Exception):
 
 def pad_center(d: List[np.ndarray], max_len: int | None = None) -> np.ndarray:
 
-    # Could be a memory view
+    # Normalize to (channels, time)
     d = [np.array(di).T for di in d]
-    
-    max_len = max(*[di.data.shape[1] for di in d], max_len or 0)
+
+    max_len = max(*[di.shape[1] for di in d], max_len or 0)
 
     padded = []
 
-    print(max_len)
-    
     for di in d:
-        
-        pad_needed = max_len - di.data.shape[1]
-            
+
+        pad_needed = max_len - di.shape[1]
+
         left_pad, right_pad = pad_needed // 2, math.ceil(pad_needed / 2)
-        
-        p = np.pad(di.data, ((0, 0), (left_pad, right_pad)), mode='mean')
-        
+
+        p = np.pad(di, ((0, 0), (left_pad, right_pad)), mode='mean')
+
         padded.append(p)
-        
+
     return np.array(padded)
 
 model = None
@@ -123,13 +121,13 @@ class Model(BaseModel):
         
         w = pad_center([dp.anom.data for dp in avail_data], max_len=x.shape[1])
         
-        if w.shape[1] > x.shape[1]:
+        if w.shape[2] > x.shape[1]:
             # Pad x to reach w
-            diff = w.shape[1] - x.shape[1]
+            diff = w.shape[2] - x.shape[1]
         
             left_pad, right_pad = diff // 2, math.ceil(diff / 2)
             
-            x = np.pad(x, ((left_pad, right_pad)), mode='mean')
+            x = np.pad(x, ((0, 0), (left_pad, right_pad)), mode='mean')
             
         values = []
         
