@@ -12,7 +12,7 @@ class Settings:
     MAX_SAMPLES_PER_CHUNK: int = 1
 
     # Classification algorithm config
-    ALGORITHM_NAME: str = "dtw"
+    ALGORITHM_NAME: str = "svm"
     PCA_ENABLE: bool = False
     PCA_COMPONENTS: int = 10
     CONSTRAINED_DTW_BAND: int = 25
