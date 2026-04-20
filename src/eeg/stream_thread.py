@@ -121,7 +121,7 @@ def eeg_loop(num_samples_to_buffer: int = Settings.BUFFER_LENGTH, current_mode: 
 
         try:
 
-            if inlet is None or not muse_thread.is_alive():
+            if inlet is None or muse_thread is None or not muse_thread.is_alive():
                 raise MuseNotConnected()
                 
             samples, timestamps = inlet.pull_chunk(timeout=2, max_samples=Settings.MAX_SAMPLES_PER_CHUNK)
@@ -154,8 +154,8 @@ def eeg_loop(num_samples_to_buffer: int = Settings.BUFFER_LENGTH, current_mode: 
 
             try:
             
-                buffer = np.concat([buffer[num_samples:], samples])
-                timestamp_buffer = np.concat([timestamp_buffer[num_samples:], timestamps])
+                buffer = np.concatenate([buffer[num_samples:], samples], axis=0)
+                timestamp_buffer = np.concatenate([timestamp_buffer[num_samples:], timestamps], axis=0)
 
             except ValueError:
 
@@ -275,4 +275,4 @@ async def wait_for_new_event(classification: str) -> DataPoint:
 
                     return found_datapoint
 
-        sleep(0.1)
+        await asyncio.sleep(0.1)
