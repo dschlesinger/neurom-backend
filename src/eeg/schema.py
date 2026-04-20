@@ -24,8 +24,6 @@ class Anomaly(BaseModel):
     @model_serializer
     def ser(self) -> Dict:
 
-        print('Ser runs')
-
         return {
             'start': self.start,
             'end': self.end,

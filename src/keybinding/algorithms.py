@@ -132,9 +132,6 @@ class DtwAlgorithm(AlgorithmBase):
         scores = (scores - scores.mean()) / scores.std()
         probs = scipy.special.softmax(scores)
 
-        for pro, cls in zip(probs, cls_choice):
-            print(f"\t{cls}: {pro.item():.2f}")
-
         return cls_choice[probs.argmin().item()]
 
 

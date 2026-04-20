@@ -151,7 +151,6 @@ def emit_keybind(events: List[str], max_queue_length: int = 5) -> bool:
     Returns:
         True if a keybind was found/executed or the queue limit was hit, False otherwise
     """
-    print('Events:', events)
     
     # Check queue length limit
     if len(events) > max_queue_length:
