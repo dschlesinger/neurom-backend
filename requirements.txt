@@ -5,5 +5,7 @@ muselsl @ git+https://github.com/dschlesinger/muse-lsl.git
 pydantic
 scikit-learn
 dtaidistance
+pyautogui
+tqdm
 pynput
 PyDirectInput; platform_system == "Windows"

@@ -1,16 +1,26 @@
-import numpy as np, json, math, scipy, \
-    os
+import json
+import os
+from dataclasses import dataclass
 
-from itertools import groupby
-from dtaidistance import dtw
+import numpy as np
+from sklearn.decomposition import PCA
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, PrivateAttr
 from typing import List, Optional
 
 from eeg.schema import Anomaly, DataPoint
+from cli.config import Settings
+from keybinding.algorithms import (
+    AlgorithmBase,
+    create_algorithm,
+    pad_center,
+    pad_or_trim_center,
+)
 
 class NoDatasetLoaded(Exception):
     pass
+
+model = None
 
 def pad_center(d: List[np.ndarray], max_len: int | None = None) -> np.ndarray:
 
@@ -33,14 +43,23 @@ def pad_center(d: List[np.ndarray], max_len: int | None = None) -> np.ndarray:
 
     return np.array(padded)
 
-model = None
+@dataclass
+class TrainState:
+    algorithm: AlgorithmBase
+    max_len: int
+    pca: Optional[PCA]
 
 class Model(BaseModel):
     """Dynamic Time Warp based on previous data points"""
-    
+
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     datapoints: Optional[List[DataPoint]] = None
 
     current_datasets: List[str] = []
+
+    algorithm_name: str = Settings.ALGORITHM_NAME
+    _train_state: Optional[TrainState] = PrivateAttr(default=None)
     
     @property
     def dataset_loaded(self) -> bool:
@@ -75,6 +94,7 @@ class Model(BaseModel):
                     datapoints.append(d)
                 
         self.datapoints = datapoints
+        self._train_state = self._prepare_training(datapoints)
 
     def get_all_classifications(self) -> List[str]:
 
@@ -110,12 +130,17 @@ class Model(BaseModel):
             return
         
         if exclude is not None:
-
             avail_data = [dp for dp in self.datapoints if dp != exclude]
+            train_state = self._prepare_training(avail_data)
+        else:
+            avail_data = self.datapoints
+            train_state = self._train_state
 
-        else: avail_data = self.datapoints
-        
+        if train_state is None:
+            raise NoDatasetLoaded("No training data available")
+
         x = artifact.data.T
+        x = pad_or_trim_center(x, train_state.max_len)
         
         classes = [dp.classification for dp in avail_data]
         
@@ -147,28 +172,42 @@ class Model(BaseModel):
             cls_choice.append(c)
             cls_values.append(sum(vls) / len(vls))
 
-        a = np.array(cls_values)
+        if train_state.algorithm.input_type == "window":
+            return train_state.algorithm.predict(x)
 
-        cont_score = a.min() / x.shape[0]
+        flat = x.reshape(-1)
+        if train_state.pca is not None:
+            flat = train_state.pca.transform([flat])[0]
+        return train_state.algorithm.predict(flat)
 
-        print(a)
-        print(a.min())
-        print(cont_score)
+    def _prepare_training(self, datapoints: List[DataPoint]) -> Optional[TrainState]:
+        if not datapoints:
+            return None
 
-        # Print logits
-        if cont_score > 275:
+        labels = [dp.classification for dp in datapoints]
+        windows = pad_center([dp.anom.data for dp in datapoints])
+        max_len = windows.shape[2]
 
-            print('Continuity score exceeds threshhold may be false emision')
-        
-        a = (a - a.mean()) / a.std()
-        
-        probs = scipy.special.softmax(a)
-        
-        for pro, cls in zip(probs, cls_choice):
-            
-            print(f'\t{cls}: {pro.item():.2f}')
-        
-        return cls_choice[probs.argmin().item()]
+        features = windows.reshape(windows.shape[0], -1)
+        pca = None
+
+        if Settings.PCA_ENABLE:
+            max_components = min(Settings.PCA_COMPONENTS, features.shape[0], features.shape[1])
+            if max_components > 0:
+                pca = PCA(n_components=max_components)
+                features = pca.fit_transform(features)
+
+        params = {
+            "band": Settings.CONSTRAINED_DTW_BAND,
+        }
+
+        algorithm = create_algorithm(self.algorithm_name, params)
+        if algorithm.input_type == "window":
+            algorithm.fit(windows, labels)
+        else:
+            algorithm.fit(features, labels)
+
+        return TrainState(algorithm=algorithm, max_len=max_len, pca=pca)
     
 model = Model()
 # model.load_data(['./data_store/examples.json'])
