@@ -1,12 +1,128 @@
 import keybinding.model
-from typing import List, Set, Callable
+from typing import List, Set
 import threading
 import time
+import sys
 
-try:
-    import pydirectinput as p
-except ImportError:
-    import pyautogui as p
+
+class KeybindBackend:
+    def click(self) -> None:
+        raise NotImplementedError
+
+    def right_click(self) -> None:
+        raise NotImplementedError
+
+    def move_rel(self, x: int, y: int) -> None:
+        raise NotImplementedError
+
+    def key_down(self, key: str) -> None:
+        raise NotImplementedError
+
+    def key_up(self, key: str) -> None:
+        raise NotImplementedError
+
+    def press(self, keys: List[str]) -> None:
+        raise NotImplementedError
+
+
+class PyDirectInputBackend(KeybindBackend):
+    def __init__(self) -> None:
+        import pydirectinput as p
+        self._p = p
+
+    def click(self) -> None:
+        self._p.click()
+
+    def right_click(self) -> None:
+        self._p.rightClick()
+
+    def move_rel(self, x: int, y: int) -> None:
+        self._p.moveRel(x, y)
+
+    def key_down(self, key: str) -> None:
+        self._p.keyDown(key)
+
+    def key_up(self, key: str) -> None:
+        self._p.keyUp(key)
+
+    def press(self, keys: List[str]) -> None:
+        self._p.press(keys)
+
+
+class PynputBackend(KeybindBackend):
+    def __init__(self) -> None:
+        from pynput.keyboard import Controller as KeyboardController, Key
+        from pynput.mouse import Controller as MouseController, Button
+
+        self._keyboard = KeyboardController()
+        self._mouse = MouseController()
+        self._Key = Key
+        self._Button = Button
+
+    def _to_key(self, key: str):
+        mapping = {
+            'up': self._Key.up,
+            'down': self._Key.down,
+            'left': self._Key.left,
+            'right': self._Key.right,
+            'enter': self._Key.enter,
+            'space': self._Key.space,
+            'tab': self._Key.tab,
+            'esc': self._Key.esc,
+            'escape': self._Key.esc,
+            'backspace': self._Key.backspace,
+            'delete': self._Key.delete,
+            'shift': self._Key.shift,
+            'ctrl': self._Key.ctrl,
+            'alt': self._Key.alt,
+            'caps_lock': self._Key.caps_lock,
+            'home': self._Key.home,
+            'end': self._Key.end,
+            'pageup': self._Key.page_up,
+            'pagedown': self._Key.page_down,
+            'insert': self._Key.insert,
+            'menu': self._Key.menu,
+            'cmd': self._Key.cmd,
+            'win': self._Key.cmd,
+        }
+        return mapping.get(key, key)
+
+    def click(self) -> None:
+        self._mouse.click(self._Button.left, 1)
+
+    def right_click(self) -> None:
+        self._mouse.click(self._Button.right, 1)
+
+    def move_rel(self, x: int, y: int) -> None:
+        self._mouse.move(x, y)
+
+    def key_down(self, key: str) -> None:
+        self._keyboard.press(self._to_key(key))
+
+    def key_up(self, key: str) -> None:
+        self._keyboard.release(self._to_key(key))
+
+    def press(self, keys: List[str]) -> None:
+        for key in keys:
+            mapped = self._to_key(key)
+            self._keyboard.press(mapped)
+            self._keyboard.release(mapped)
+
+
+def _select_backend() -> KeybindBackend:
+    if sys.platform == 'win32':
+        try:
+            return PyDirectInputBackend()
+        except ImportError as exc:
+            raise RuntimeError('PyDirectInput is required on Windows for keybindings.') from exc
+
+    try:
+        return PynputBackend()
+    except ImportError as exc:
+        raise RuntimeError('pynput is required on Linux/macOS for keybindings.') from exc
+
+
+backend = _select_backend()
 
 keybindings = []
 keysdown: Set[str] = set()
@@ -24,16 +140,16 @@ JS_KEYS_TO_PY = {
 
 # Functional keybinds that don't use keyboard keys
 FUNCTIONAL_KBS = {
-    'Left Click': lambda: p.click(),
-    'Right Click': lambda: p.rightClick(),
-    'Mouse Up': lambda: p.moveRel(0, -100),
-    'Mouse Down': lambda: p.moveRel(0, 100),
-    'Mouse Right': lambda: p.moveRel(100, 0),
-    'Mouse Left': lambda: p.moveRel(-100, 0),
-    'Slight Mouse Up': lambda: p.moveRel(0, -30),
-    'Slight Mouse Down': lambda: p.moveRel(0, 30),
-    'Slight Mouse Right': lambda: p.moveRel(30, 0),
-    'Slight Mouse Left': lambda: p.moveRel(-30, 0),
+    'Left Click': lambda: backend.click(),
+    'Right Click': lambda: backend.right_click(),
+    'Mouse Up': lambda: backend.move_rel(0, -100),
+    'Mouse Down': lambda: backend.move_rel(0, 100),
+    'Mouse Right': lambda: backend.move_rel(100, 0),
+    'Mouse Left': lambda: backend.move_rel(-100, 0),
+    'Slight Mouse Up': lambda: backend.move_rel(0, -30),
+    'Slight Mouse Down': lambda: backend.move_rel(0, 30),
+    'Slight Mouse Right': lambda: backend.move_rel(30, 0),
+    'Slight Mouse Left': lambda: backend.move_rel(-30, 0),
 }
 
 
@@ -45,7 +161,7 @@ def normalize_key(key: str) -> str:
 def release_all_keys() -> None:
     """Release all currently held keys and stop all functional holds."""
     for key in list(keysdown):
-        p.keyUp(normalize_key(key))
+        backend.key_up(normalize_key(key))
     keysdown.clear()
     
     # Stop all functional holds
@@ -97,10 +213,10 @@ def toggle_hold_key(key: str) -> None:
     normalized_key = normalize_key(key)
     
     if key in keysdown:
-        p.keyUp(normalized_key)
+        backend.key_up(normalized_key)
         keysdown.discard(key)
     else:
-        p.keyDown(normalized_key)
+        backend.key_down(normalized_key)
         keysdown.add(key)
 
 
@@ -127,7 +243,7 @@ def execute_press_keybind(key_sequences: List[List[str]]) -> None:
         if regular_keys:
             normalized_keys = [normalize_key(k) for k in regular_keys]
             print('Pressing:', normalized_keys)
-            p.press(normalized_keys)
+            backend.press(normalized_keys)
 
 
 def execute_hold_keybind(key_sequences: List[List[str]]) -> None:
